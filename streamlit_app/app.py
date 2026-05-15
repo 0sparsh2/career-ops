@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Job Finder AI Tool — Streamlit job screener (pipeline + scan history + scoring)."""
+"""Career Ops — Streamlit job screener (pipeline + scan history + scoring)."""
 
 from __future__ import annotations
 
@@ -38,9 +38,9 @@ from llm_score import score_all_jobs
 
 load_dotenv()
 
-st.set_page_config(page_title="Job Finder AI Tool", layout="wide")
+st.set_page_config(page_title="Career Ops — Job Screener", layout="wide")
 
-st.title("Job Finder AI Tool")
+st.title("Career Ops — Job Screener")
 st.caption(
     "Uses jobs already found by **`npm run scan`** (`data/pipeline.md`, `data/scan-history.tsv`). "
     "**Does not submit applications** — you review and apply manually."
