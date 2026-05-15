@@ -1,6 +1,6 @@
 # Batch Processing
 
-Process multiple job offers in parallel via `claude -p` workers. Each worker runs the full evaluation pipeline (A-F report + PDF + tracker line) autonomously.
+Process multiple job offers in parallel via headless workers. Default: `claude -p` (Claude Code). Optional: **OpenCode + Ollama** for a fully local LLM (see below). Each worker runs the full evaluation pipeline (A-F report + PDF + tracker line) autonomously.
 
 ## Quick Start
 
@@ -18,11 +18,21 @@ Process multiple job offers in parallel via `claude -p` workers. Each worker run
    ./batch/batch-runner.sh --dry-run
    ```
 
-3. **Run the batch**:
+3. **Run the batch** (Claude default):
 
    ```bash
    ./batch/batch-runner.sh
    ```
+
+   **Fully local batch** (OpenCode + Ollama — same script, different worker):
+
+   ```bash
+   export CAREER_OPS_BATCH_WORKER=opencode
+   export OPENCODE_MODEL=ollama/career-ops-llama   # or your Ollama model name
+   ./batch/batch-runner.sh
+   ```
+
+   Requires `opencode` on your PATH, Ollama running, and OpenCode configured for Ollama (see `config/opencode-ollama.example.json`). Create a higher-context model with `config/ollama-modelfile` if needed.
 
 4. **Results** are automatically merged into `data/applications.md` and verified with `verify-pipeline.mjs` at the end of the run.
 
@@ -30,7 +40,7 @@ Process multiple job offers in parallel via `claude -p` workers. Each worker run
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--parallel N` | `1` | Number of concurrent `claude -p` workers |
+| `--parallel N` | `1` | Number of concurrent workers (`claude` or `opencode`) |
 | `--dry-run` | off | Preview pending offers without processing |
 | `--retry-failed` | off | Only retry offers marked as `failed` in state |
 | `--start-from N` | `0` | Skip offers with ID below N |
@@ -52,7 +62,7 @@ batch/
 ## How It Works
 
 1. **batch-runner.sh** reads `batch-input.tsv` and `batch-state.tsv` to determine which offers need processing.
-2. For each pending offer, it assigns a report number and launches a `claude -p` worker with `batch-prompt.md` as the system prompt (placeholders like `{{URL}}`, `{{REPORT_NUM}}` are resolved).
+2. For each pending offer, it assigns a report number and launches a worker (`claude -p` or `opencode run`) with `batch-prompt.md` resolved (placeholders like `{{URL}}`, `{{REPORT_NUM}}` are substituted).
 3. Each worker evaluates the offer, writes a report to `reports/`, generates a PDF to `output/`, and writes a tracker TSV to `tracker-additions/`.
 4. After all workers finish, batch-runner calls `merge-tracker.mjs` to merge TSVs into `data/applications.md` and runs `verify-pipeline.mjs` to check integrity.
 
@@ -75,6 +85,6 @@ A PID-based lock file (`batch-runner.pid`) prevents concurrent batch runs. If a 
 
 ## Prerequisites
 
-- `claude` CLI in PATH (Claude Max subscription for default model)
+- **Default:** `claude` CLI in PATH (Claude Max subscription for default model), or **local:** `opencode` + Ollama with `CAREER_OPS_BATCH_WORKER=opencode`
 - Node.js >= 18, Playwright chromium installed (`npm run doctor` to verify)
 - `batch-input.tsv` with at least one offer

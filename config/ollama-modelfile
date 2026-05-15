@@ -1,0 +1,4 @@
+# Larger context for career-ops (long JDs + CLAUDE.md + modes).
+# Build: ollama create career-ops-llama -f config/ollama-modelfile
+FROM gemma4:e4b
+PARAMETER num_ctx 32768

@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# career-ops batch runner — standalone orchestrator for claude -p workers
-# Reads batch-input.tsv, delegates each offer to a claude -p worker,
-# tracks state in batch-state.tsv for resumability.
+# career-ops batch runner — orchestrator for headless workers (claude -p or OpenCode)
+# Reads batch-input.tsv, delegates each offer to a worker, tracks state in batch-state.tsv.
+# OpenCode: Gemini API first ( .env ), fallback Ollama — CAREER_OPS_BATCH_WORKER=opencode
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -29,10 +29,42 @@ START_FROM=0
 MAX_RETRIES=2
 MIN_SCORE=0
 
+# Worker backend: claude (default) or opencode (Gemini API → Ollama fallback via .env).
+#   CAREER_OPS_BATCH_WORKER=opencode ./batch-runner.sh
+CAREER_OPS_BATCH_WORKER="${CAREER_OPS_BATCH_WORKER:-claude}"
+
+load_project_env() {
+  if [[ -f "$PROJECT_DIR/.env" ]]; then
+    set -a
+    # shellcheck disable=SC1091
+    source "$PROJECT_DIR/.env"
+    set +a
+  fi
+}
+
+load_project_env
+NVIDIA_MODEL="${NVIDIA_MODEL:-deepseek-ai/deepseek-v4-pro}"
+OPENCODE_MODEL="${OPENCODE_MODEL:-nvidia-nim/${NVIDIA_MODEL}}"
+OPENCODE_MODEL_FALLBACK="${OPENCODE_MODEL_FALLBACK:-ollama/gemma4:e4b}"
+
+run_opencode_worker() {
+  local log_file="$1" resolved_prompt="$2" prompt="$3" model="$4"
+  opencode run \
+    --pure \
+    --dir "$PROJECT_DIR" \
+    -m "$model" \
+    --dangerously-skip-permissions \
+    -f "$resolved_prompt" \
+    "$prompt" \
+    >>"$log_file" 2>&1
+}
+
 usage() {
   cat <<'USAGE'
-career-ops batch runner — process job offers in batch via claude -p workers
-Uses your default Claude model (Claude Max subscription).
+career-ops batch runner — process job offers in batch via worker processes
+
+Default: claude -p (Claude Code, uses your Claude subscription).
+Optional: OpenCode + local Ollama — set CAREER_OPS_BATCH_WORKER=opencode (see env vars below).
 
 Usage: batch-runner.sh [OPTIONS]
 
@@ -44,6 +76,13 @@ Options:
   --max-retries N      Max retry attempts per offer (default: 2)
   --min-score N        Skip PDF/tracker for offers scoring below N (default: 0 = off)
   -h, --help           Show this help
+
+Environment:
+  CAREER_OPS_BATCH_WORKER   claude | opencode (default: claude)
+  NVIDIA_API_KEY            NVIDIA NIM (primary when using opencode worker)
+  NVIDIA_MODEL              e.g. deepseek-ai/deepseek-v4-pro
+  OPENCODE_MODEL            default nvidia-nim/\$NVIDIA_MODEL
+  OPENCODE_MODEL_FALLBACK   default ollama/gemma4:e4b
 
 Files:
   batch-input.tsv      Input offers (id, url, source, notes)
@@ -119,9 +158,16 @@ check_prerequisites() {
     exit 1
   fi
 
-  if ! command -v claude &>/dev/null; then
-    echo "ERROR: 'claude' CLI not found in PATH."
-    exit 1
+  if [[ "$CAREER_OPS_BATCH_WORKER" == "opencode" ]]; then
+    if ! command -v opencode &>/dev/null; then
+      echo "ERROR: CAREER_OPS_BATCH_WORKER=opencode but 'opencode' not found in PATH."
+      exit 1
+    fi
+  else
+    if ! command -v claude &>/dev/null; then
+      echo "ERROR: 'claude' CLI not found in PATH. Install Claude Code or set CAREER_OPS_BATCH_WORKER=opencode for OpenCode + local Ollama."
+      exit 1
+    fi
   fi
 
   mkdir -p "$LOGS_DIR" "$TRACKER_DIR" "$REPORTS_DIR"
@@ -350,13 +396,30 @@ process_offer() {
     -e "s|{{ID}}|${esc_id}|g" \
     "$PROMPT_FILE" > "$resolved_prompt"
 
-  # Launch claude -p worker (uses default model from Claude Max subscription)
+  # Launch worker: Claude pipe mode or OpenCode (local Ollama)
   local exit_code=0
-  claude -p \
-    --dangerously-skip-permissions \
-    --append-system-prompt-file "$resolved_prompt" \
-    "$prompt" \
-    > "$log_file" 2>&1 || exit_code=$?
+  if [[ "$CAREER_OPS_BATCH_WORKER" == "opencode" ]]; then
+    : >"$log_file"
+    if run_opencode_worker "$log_file" "$resolved_prompt" "$prompt" "$OPENCODE_MODEL"; then
+      exit_code=0
+    else
+      exit_code=$?
+      if [[ -n "${OPENCODE_MODEL_FALLBACK:-}" && "$OPENCODE_MODEL_FALLBACK" != "$OPENCODE_MODEL" ]]; then
+        echo "[batch] OpenCode primary ($OPENCODE_MODEL) failed (exit $exit_code); retrying $OPENCODE_MODEL_FALLBACK" >>"$log_file"
+        if run_opencode_worker "$log_file" "$resolved_prompt" "$prompt" "$OPENCODE_MODEL_FALLBACK"; then
+          exit_code=0
+        else
+          exit_code=$?
+        fi
+      fi
+    fi
+  else
+    claude -p \
+      --dangerously-skip-permissions \
+      --append-system-prompt-file "$resolved_prompt" \
+      "$prompt" \
+      > "$log_file" 2>&1 || exit_code=$?
+  fi
 
   # Cleanup resolved prompt
   rm -f "$resolved_prompt"
@@ -461,6 +524,7 @@ main() {
   fi
 
   echo "=== career-ops batch runner ==="
+  echo "Worker: $CAREER_OPS_BATCH_WORKER${OPENCODE_MODEL:+ (model: $OPENCODE_MODEL)}"
   echo "Parallel: $PARALLEL | Max retries: $MAX_RETRIES"
   echo "Input: $total_input offers"
   echo ""

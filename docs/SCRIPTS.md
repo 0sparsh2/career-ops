@@ -17,7 +17,7 @@ All scripts live in the project root as `.mjs` modules and are exposed via `npm 
 | `npm run update` | `update-system.mjs apply` | Apply upstream update |
 | `npm run rollback` | `update-system.mjs rollback` | Rollback last update |
 | `npm run liveness` | `check-liveness.mjs` | Test if job URLs are still active |
-| `npm run scan` | `scan.mjs` | Zero-token portal scanner |
+| `npm run smoke:careers` | `scripts/smoke-careers-pages.mjs` | Playwright link harvest smoke test for mega-cap / custom ATS `careers_url` values |
 
 ---
 
@@ -180,10 +180,48 @@ Each URL gets a verdict: `active`, `expired`, or `uncertain` with a reason.
 
 ## scan
 
-Zero-token portal scanner. Hits ATS APIs (Greenhouse, Ashby, Lever) and career pages directly — no LLM tokens consumed. Reads `portals.yml` for target companies and search queries, outputs matching listings to stdout and optionally appends to `data/pipeline.md`.
+Zero-token portal scanner. Hits ATS APIs (Greenhouse, Ashby, Lever) first — no LLM tokens consumed. If an API request fails (HTTP error, timeout, bad JSON), the scanner can **fall back** to a sequential headless **Playwright** pass over `careers_url` and heuristically collect job-like links (same browser rules as `check-liveness.mjs`: never parallel Playwright).
 
 ```bash
 npm run scan
+npm run scan:all                           # every enabled row: API + Playwright on careers_url when no API
+npm run scan -- --all-companies --dry-run
+npm run scan -- --dry-run
+npm run scan -- --no-playwright-fallback   # API only (faster; e.g. CI)
 ```
 
+Disable fallback globally in `portals.yml` with `scanner.playwright_fallback: false`, or per company with `playwright_fallback: false` on that `tracked_companies` entry.
+
+**`--all-companies`:** includes every **enabled** row: ATS **API** when `detectApi` finds Greenhouse/Ashby/Lever, otherwise a **Playwright** harvest on `careers_url` (same heuristics as API-failure fallback). Rows with no API and no usable careers URL are skipped and counted.
+
 **Exit codes:** `0` scan completed, `1` configuration error or no portals.yml found.
+
+---
+
+## report:portal
+
+Runs **`npm run scan`** (with any forwarded flags), then the **default mega-cap `smoke:careers`** pass, and writes one Markdown file: **`data/portal-run-report.md`** (scan log in a fenced block + smoke summary table).
+
+```bash
+npm run report:portal
+npm run report:portal -- --dry-run
+npm run report:portal -- --no-smoke          # scan only in the report
+```
+
+**Exit codes:** same as `scan` (non-zero scan status aborts after writing the report).
+
+---
+
+## smoke:careers
+
+Sequential Playwright smoke test for `careers_url` pages listed in `portals.yml`. Uses the same **heuristic link harvest** as the scan API-failure fallback (`lib/careers-playwright-scrape.mjs`). Useful to see whether mega-cap / SPA sites expose enough `<a href>` patterns for automated fallback; many stacks still need **`/career-ops scan`** (agent) or **`search_queries`** (WebSearch).
+
+```bash
+npm run smoke:careers
+npm run smoke:careers -- Google Microsoft Uber Spotify
+npm run smoke:careers -- --urls https://careers.google.com/ https://github.careers
+```
+
+**Exit codes:** `0` always unless a page **navigation** throws; zero extracted links counts as a weak result, not a failure.
+
+Reports **two** counts per page: **raw** (loose in-page heuristic) and **high-confidence** (filters nav, locale rows, Lever/Greenhouse filter chips, Meta/Microsoft category links, NVIDIA promo cards, etc.). Trust **`npm run scan`** for GH/Ashby/Lever companies; smoke is diagnostic for mega-cap SPAs.

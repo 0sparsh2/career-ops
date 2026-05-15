@@ -14,7 +14,15 @@
     "update": "node update-system.mjs apply",
     "rollback": "node update-system.mjs rollback",
     "liveness": "node check-liveness.mjs",
-    "scan": "node scan.mjs"
+    "scan": "node scan.mjs",
+    "scan:all": "node scan.mjs --all-companies",
+    "report:portal": "node scripts/full-portal-report.mjs",
+    "smoke:careers": "node scripts/smoke-careers-pages.mjs",
+    "verify:local-llm": "node scripts/verify-local-llm.mjs",
+    "verify:opencode": "node scripts/verify-opencode-llm.mjs",
+    "verify:nvidia-nim": "node scripts/verify-nvidia-nim.mjs",
+    "research:product-jobs": "node scripts/research-product-jobs.mjs",
+    "export:jobs-json": "node scripts/export-jobs-json.mjs"
   },
   "keywords": [
     "ai",

@@ -15,6 +15,9 @@ batch/tracker-additions/**/*.tsv
 jds/*
 !jds/.gitkeep
 
+# Secrets
+.env
+
 # User config and customization (never auto-updated)
 config/profile.yml
 portals.yml
@@ -37,3 +40,9 @@ bun.lock
 .claude/memory/
 career-dashboard
 package-lock.json
+
+# Streamlit app
+streamlit_app/.venv/
+streamlit_app/__pycache__/
+streamlit_app/**/__pycache__/
+.streamlit/secrets.toml
