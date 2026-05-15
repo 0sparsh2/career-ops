@@ -1,7 +1,7 @@
 {
-  "name": "career-ops",
+  "name": "job-finder-ai-tool",
   "version": "1.0.0",
-  "description": "AI-powered job search pipeline built on Claude Code",
+  "description": "Job Finder AI Tool — Streamlit screener and career-ops extensions",
   "scripts": {
     "doctor": "node doctor.mjs",
     "verify": "node verify-pipeline.mjs",
@@ -35,7 +35,7 @@
   "homepage": "https://santifer.io",
   "repository": {
     "type": "git",
-    "url": "https://github.com/santifer/career-ops"
+    "url": "https://github.com/0sparsh2/job-finder-ai-tool"
   },
   "license": "MIT",
   "dependencies": {

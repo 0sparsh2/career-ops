@@ -1,8 +1,8 @@
-# Career Ops — Streamlit Job Screener
+# Job Finder AI Tool — Streamlit UI
 
-A **visual job inbox** on top of [career-ops](https://github.com/santifer/career-ops) by [Santiago Fernández de Valderrama](https://santifer.io). This fork adds a Python/Streamlit UI for bulk screening; the core pipeline (scan, evaluate, PDF, tracker) remains in the upstream repo.
+The visual job inbox for [Job Finder AI Tool](https://github.com/0sparsh2/job-finder-ai-tool). Built on [career-ops](https://github.com/santifer/career-ops) by [Santiago Fernández de Valderrama](https://santifer.io).
 
-![Career Ops Job Screener UI](../docs/streamlit-job-screener.png)
+![Job Finder AI Tool UI](../docs/streamlit-job-screener.png)
 
 **This app does not submit applications.** It helps you decide what to apply to; you apply manually.
 
@@ -99,5 +99,5 @@ Use your custom tag (e.g. `gemma4:e4b`) in the sidebar **Ollama model** field.
 
 ## Credits
 
-- **Upstream:** [santifer/career-ops](https://github.com/santifer/career-ops) — AI job search pipeline (Claude Code / OpenCode, scan, evaluate, PDF, tracker).
-- **This UI:** Streamlit screener layer in `streamlit_app/`; reuses `portals.yml`, scan data, and ATS patterns from the Node scanner.
+- **This project:** [0sparsh2/job-finder-ai-tool](https://github.com/0sparsh2/job-finder-ai-tool)
+- **Upstream:** [santifer/career-ops](https://github.com/santifer/career-ops) — scan, evaluate, PDF, tracker (Claude Code / OpenCode)

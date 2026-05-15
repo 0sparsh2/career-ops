@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Career Ops — Streamlit job screener (pipeline + scan history + scoring)."""
+"""Job Finder AI Tool — Streamlit job screener (pipeline + scan history + scoring)."""
 
 from __future__ import annotations
 
@@ -38,9 +38,9 @@ from llm_score import score_all_jobs
 
 load_dotenv()
 
-st.set_page_config(page_title="Career Ops Job Screener", layout="wide")
+st.set_page_config(page_title="Job Finder AI Tool", layout="wide")
 
-st.title("Career Ops — Job Screener")
+st.title("Job Finder AI Tool")
 st.caption(
     "Uses jobs already found by **`npm run scan`** (`data/pipeline.md`, `data/scan-history.tsv`). "
     "**Does not submit applications** — you review and apply manually."
@@ -97,7 +97,7 @@ with st.sidebar:
     st.caption(f"CV: `{CV_PATH.name}` ({'exists' if CV_PATH.exists() else 'missing'})")
 
 # --- Job sources (career-ops scan output) ---
-st.subheader("Job inbox (from career-ops scan)")
+st.subheader("Job inbox (from scan)")
 st.markdown(
     "Run **`npm run scan`** in the repo to refresh [`data/pipeline.md`](../data/pipeline.md) and "
     "[`data/scan-history.tsv`](../data/scan-history.tsv). The screener loads URLs, company, and title from there."
